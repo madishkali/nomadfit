@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NomadFit — Первый AI диетолог для казахской кухни</title>
+
+  <!-- SEO & Social sharing -->
+  <meta name="description" content="Считай калории в любимой еде. Первое AI приложение для казахской и центральноазиатской кухни — бешбармак, манты, плов, лагман.">
+  <meta name="keywords" content="калории казахская еда, бешбармак калории, манты калории, приложение диета Казахстан">
+  <meta property="og:title" content="NomadFit — Первый AI диетолог для казахской кухни">
+  <meta property="og:description" content="Бешбармак, манты, плов, лагман — теперь с точным подсчётом калорий. Присоединись к списку ожидания.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://nomadfit.app">
+  <meta property="og:image" content="https://nomadfit.app/og-image.jpg">
+  <meta property="og:locale" content="ru_RU">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="NomadFit — AI диетолог для казахской кухни">
+  <meta name="twitter:description" content="Считай калории в бешбармаке, мантах, плове и 500+ казахских блюдах.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* =============================================
+       VARIABLES & RESET
+    ============================================= */
+    :root {
+      --bg:           #0F0A06;
+      --surface:      #1A1208;
+      --card:         #231A0E;
+      --primary:      #8B4513;
+      --gold:         #C8960C;
+      --gold-light:   #D4A843;
+      --accent:       #6B3A2A;
+      --text:         #F2E8D9;
+      --text-sec:     #9E8B6F;
+      --border:       rgba(200,150,12,0.15);
+      --border-h:     rgba(200,150,12,0.38);
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
+    h1,h2,h3,h4 { font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.15; }
+    a { color: inherit; text-decoration: none; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 3px; }
+
+    /* =============================================
+       UTILITIES
+    ============================================= */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .section    { padding: 100px 0; }
+
+    .section-title {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .section-sub {
+      font-size: 17px;
+      color: var(--text-sec);
+      text-align: center;
+      max-width: 560px;
+      margin: 0 auto 56px;
+    }
+
+    .gold-text {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* =============================================
+       NAV
+    ============================================= */
+    #nav {
+      position: fixed; top:0; left:0; right:0; z-index: 1000;
+      padding: 20px 0;
+      transition: all .3s ease;
+    }
+    #nav.scrolled {
+      background: rgba(15,10,6,0.94);
+      backdrop-filter: blur(22px);
+      border-bottom: 1px solid var(--border);
+      padding: 13px 0;
+    }
+    .nav-inner { display:flex; align-items:center; justify-content:space-between; }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 9px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 21px; font-weight: 800;
+    }
+    .nav-logo .logo-mark {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--primary), var(--gold));
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+    }
+    .nav-logo .logo-name {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .btn-nav {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: var(--text); border: 1px solid rgba(200,150,12,0.22);
+      padding: 10px 26px; border-radius: 50px;
+      font: 600 14px/1 'Inter', sans-serif; cursor: pointer;
+      transition: all .3s ease;
+    }
+    .btn-nav:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(139,69,19,0.45);
+      border-color: var(--gold);
+    }
+
+    /* =============================================
+       HERO
+    ============================================= */
+    #hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 120px 0 80px;
+      position: relative; overflow: hidden;
+    }
+
+    /* layered gradient bg */
+    .hero-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% -5%,  rgba(200,150,12,0.13) 0%, transparent 60%),
+        radial-gradient(ellipse 55% 45% at 82% 85%,  rgba(139,69,19,0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at  0% 65%,  rgba(107,58,42,0.06) 0%, transparent 55%);
+    }
+    .hero-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(200,150,12,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,150,12,0.025) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+    #particle-canvas { position:absolute; inset:0; pointer-events:none; }
+
+    .hero-layout {
+      position: relative; z-index: 2;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+    }
+
+    /* LEFT */
+    .hero-left { display: flex; flex-direction: column; gap: 26px; }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 9px;
+      background: rgba(200,150,12,0.1);
+      border: 1px solid rgba(200,150,12,0.28);
+      border-radius: 50px; padding: 8px 18px;
+      font-size: 13px; font-weight: 500; color: var(--gold-light);
+      width: fit-content;
+      animation: badge-pulse 2.2s ease infinite;
+    }
+    @keyframes badge-pulse {
+      0%,100% { border-color: rgba(200,150,12,0.28); }
+      50%      { border-color: rgba(200,150,12,0.65); }
+    }
+    .badge-dot {
+      width: 7px; height: 7px;
+      background: var(--gold); border-radius: 50%;
+      animation: dot-blink 1.6s ease infinite;
+      flex-shrink: 0;
+    }
+    @keyframes dot-blink {
+      0%,100% { opacity:1; } 50% { opacity:.25; }
+    }
+
+    .hero-h1 {
+      font-size: clamp(36px, 6vw, 60px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .hero-sub {
+      font-size: 18px; color: var(--text-sec);
+      line-height: 1.72; max-width: 490px;
+    }
+
+    /* form */
+    .hero-form { display:flex; gap:12px; flex-wrap:wrap; }
+    .email-input {
+      flex: 1; min-width: 220px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 13px; padding: 14px 20px;
+      font: 15px/1 'Inter',sans-serif;
+      color: var(--text); outline: none;
+      transition: all .3s ease;
+    }
+    .email-input::placeholder { color: var(--text-sec); }
+    .email-input:focus {
+      border-color: var(--gold);
+      background: rgba(200,150,12,0.05);
+      box-shadow: 0 0 0 3px rgba(200,150,12,0.1);
+    }
+
+    .btn-cta {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      color: #0F0A06; border: none;
+      padding: 14px 30px; border-radius: 13px;
+      font: 700 15px/1 'Inter',sans-serif;
+      cursor: pointer; white-space: nowrap;
+      position: relative; overflow: hidden;
+      transition: all .3s ease;
+    }
+    .btn-cta::after {
+      content:''; position:absolute; top:0; left:-110%; width:100%; height:100%;
+      background: linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+      transition: left .5s ease;
+    }
+    .btn-cta:hover::after { left:110%; }
+    .btn-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 38px rgba(200,150,12,0.42);
+    }
+    .btn-cta:active  { transform: translateY(0); }
+    .btn-cta:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+
+    .social-proof {
+      display: flex; align-items: center; gap: 11px;
+      font-size: 14px; color: var(--text-sec);
+    }
+    .proof-avatars { display:flex; }
+    .proof-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%; border: 2px solid var(--bg);
+      margin-left: -7px; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .proof-avatar:first-child { margin-left: 0; }
+
+    .form-msg {
+      font-size: 14px; padding: 11px 16px;
+      border-radius: 9px; display: none;
+    }
+    .form-msg.success {
+      display:block;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: #4ade80;
+    }
+    .form-msg.error {
+      display:block;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171;
+    }
+
+    /* =============================================
+       PHONE MOCKUP
+    ============================================= */
+    .hero-right { display:flex; justify-content:center; position:relative; }
+
+    .phone-wrapper {
+      position: relative;
+      animation: phone-float 4s ease-in-out infinite;
+    }
+    @keyframes phone-float {
+      0%,100% { transform: translateY(0)   rotate(-2deg); }
+      50%      { transform: translateY(-18px) rotate(-2deg); }
+    }
+
+    .phone-glow {
+      position:absolute; inset:-35px;
+      background: radial-gradient(ellipse at center, rgba(200,150,12,0.16) 0%, transparent 68%);
+      border-radius: 55px;
+    }
+
+    .phone-frame {
+      width: 265px;
+      background: #171717; border-radius: 46px; padding: 14px;
+      border: 2px solid rgba(200,150,12,0.32);
+      box-shadow:
+        0 44px 90px rgba(0,0,0,0.65),
+        0 0 0 1px rgba(255,255,255,0.045),
+        inset 0 0 0 1px rgba(255,255,255,0.03);
+      position: relative; z-index: 2;
+    }
+    .phone-notch {
+      width: 88px; height: 25px;
+      background: #111; border-radius: 0 0 16px 16px;
+      margin: 0 auto 9px;
+      display:flex; align-items:center; justify-content:center; gap:6px;
+    }
+    .notch-cam {
+      width: 10px; height: 10px;
+      background: #222; border-radius:50%; border: 1px solid #333;
+    }
+    .notch-spk {
+      width: 38px; height: 4px;
+      background: #222; border-radius: 4px;
+    }
+    .phone-screen {
+      background: var(--bg); border-radius: 32px;
+      overflow: hidden; height: 508px; position:relative;
+    }
+
+    /* App UI */
+    .app-sb {
+      display:flex; justify-content:space-between; align-items:center;
+      padding: 9px 14px 4px;
+      font: 600 10px/1 'Inter',sans-serif; color: var(--text-sec);
+    }
+    .app-hdr {
+      padding: 7px 14px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .app-greet { font: 400 10px/1 'Inter',sans-serif; color: var(--text-sec); }
+    .app-title { font: 700 16px/1.2 'Plus Jakarta Sans',sans-serif; color: var(--text); margin-top: 3px; }
+
+    .app-ring {
+      margin: 11px 13px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 13px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .ring-detail h4 {
+      font: 800 20px/1 'Plus Jakarta Sans',sans-serif;
+      color: var(--gold-light);
+    }
+    .ring-detail p, .ring-detail small {
+      font: 400 9px/1.4 'Inter',sans-serif; color: var(--text-sec);
+    }
+
+    .app-meals { padding: 0 13px; }
+    .meals-lbl {
+      font: 600 9px/1 'Inter',sans-serif;
+      text-transform: uppercase; letter-spacing:.06em;
+      color: var(--text-sec); margin-bottom: 7px;
+    }
+    .meal-row {
+      display:flex; align-items:center; gap:8px;
+      padding: 7px 9px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 5px;
+    }
+    .meal-ico {
+      width:28px; height:28px;
+      background: rgba(200,150,12,0.1);
+      border-radius: 8px;
+      display:flex; align-items:center; justify-content:center;
+      font-size: 15px; flex-shrink:0;
+    }
+    .meal-text { flex:1; }
+    .meal-text b { font: 600 10px/1 'Inter',sans-serif; color: var(--text); }
+    .meal-text span { font: 400 9px/1.3 'Inter',sans-serif; color: var(--text-sec); display:block; margin-top:2px; }
+    .ai-badge {
+      font: 600 8px/1 'Inter',sans-serif;
+      color: var(--gold-light);
+      background: rgba(200,150,12,0.12);
+      padding: 3px 6px; border-radius: 4px;
+    }
+
+    .app-scan {
+      margin: 9px 13px;
+      background: linear-gradient(135deg, var(--primary), var(--gold));
+      border-radius: 12px; padding: 10px;
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      font: 700 10px/1 'Inter',sans-serif; color: #0F0A06;
+    }
+
+    /* =============================================
+       PROBLEM
+    ============================================= */
+    #problem {
+      background: var(--surface);
+      position:relative; overflow:hidden;
+    }
+    #problem::before, #problem::after {
+      content:''; position:absolute; left:0; right:0; height:1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    #problem::before { top:0; }
+    #problem::after  { bottom:0; }
+
+    .pain-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 22px;
+    }
+    .pain-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 22px; padding: 34px 28px;
+      position:relative; overflow:hidden;
+      transition: all .3s ease;
+    }
+    .pain-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg, var(--primary), var(--gold));
+      opacity:0; transition: opacity .3s ease;
+    }
+    .pain-card:hover { border-color:var(--border-h); transform:translateY(-5px); box-shadow:0 22px 60px rgba(0,0,0,.3); }
+    .pain-card:hover::before { opacity:1; }
+    .pain-icon { font-size: 42px; display:block; margin-bottom: 20px; }
+    .pain-card h3 { font-size:18px; font-weight:700; margin-bottom:10px; }
+    .pain-card p  { font-size:15px; color:var(--text-sec); line-height:1.65; }
+
+    /* =============================================
+       SOLUTION
+    ============================================= */
+    .feat-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 22px;
+    }
+    .feat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 26px; padding: 38px 32px;
+      position:relative; overflow:hidden;
+      transition: all .4s ease;
+    }
+    .feat-card::after {
+      content:''; position:absolute; inset:0;
+      background: linear-gradient(135deg, rgba(200,150,12,0.045) 0%, transparent 60%);
+      opacity:0; transition: opacity .3s ease;
+    }
+    .feat-card:hover {
+      border-color: rgba(200,150,12,0.42);
+      transform: translateY(-7px);
+      box-shadow: 0 32px 80px rgba(0,0,0,.4), 0 0 44px rgba(200,150,12,0.08);
+    }
+    .feat-card:hover::after { opacity:1; }
+    .feat-emoji { font-size:52px; display:block; margin-bottom:24px; position:relative; z-index:1; }
+    .feat-card h3 { font-size:20px; font-weight:700; margin-bottom:12px; position:relative; z-index:1; }
+    .feat-card p  { font-size:15px; color:var(--text-sec); line-height:1.72; position:relative; z-index:1; }
+
+    /* =============================================
+       SOCIAL PROOF
+    ============================================= */
+    #social-proof {
+      background: var(--surface);
+      position:relative; overflow:hidden;
+    }
+    #social-proof::before, #social-proof::after {
+      content:''; position:absolute; left:0; right:0; height:1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    #social-proof::before { top:0; }
+    #social-proof::after  { bottom:0; }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 22px;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 22px; padding: 40px 28px;
+      text-align: center;
+      position:relative; overflow:hidden;
+      transition: all .3s ease;
+    }
+    .stat-card::before {
+      content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+      width:55%; height:1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    .stat-card:hover { border-color:var(--border-h); transform:translateY(-5px); }
+    .stat-num {
+      font: 800 48px/1 'Plus Jakarta Sans',sans-serif;
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      background-clip:text; margin-bottom:10px;
+    }
+    .stat-lbl { font-size:15px; color:var(--text-sec); line-height:1.55; }
+
+    /* =============================================
+       WAITLIST CTA
+    ============================================= */
+    .cta-box {
+      background: linear-gradient(135deg, var(--card), rgba(139,69,19,0.14));
+      border: 1px solid rgba(200,150,12,0.24);
+      border-radius: 34px; padding: 76px 48px;
+      text-align: center; position:relative; overflow:hidden;
+    }
+    .cta-glow {
+      position:absolute; width:550px; height:550px;
+      background: radial-gradient(ellipse, rgba(200,150,12,0.08) 0%, transparent 70%);
+      top:50%; left:50%; transform:translate(-50%,-50%);
+      pointer-events:none;
+    }
+    .cta-box h2 { font-size:clamp(28px,5vw,46px); font-weight:800; margin-bottom:14px; position:relative; z-index:1; }
+    .cta-sub { font-size:17px; color:var(--text-sec); margin-bottom:36px; position:relative; z-index:1; }
+    .cta-form {
+      display:flex; gap:12px;
+      max-width:520px; margin:0 auto 18px;
+      flex-wrap:wrap; justify-content:center;
+      position:relative; z-index:1;
+    }
+    .cta-hint { font-size:14px; color:var(--text-sec); position:relative; z-index:1; }
+    .cta-hint strong { color: var(--gold-light); }
+
+    /* =============================================
+       FOOTER
+    ============================================= */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 46px 0;
+    }
+    .footer-inner {
+      display:flex; align-items:center; justify-content:space-between;
+      flex-wrap:wrap; gap:20px;
+    }
+    .footer-logo {
+      display:flex; align-items:center; gap:9px;
+      font: 800 20px/1 'Plus Jakarta Sans',sans-serif;
+    }
+    .footer-logo span {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      background-clip:text;
+    }
+    .footer-copy { font-size:14px; color:var(--text-sec); }
+    .footer-links { display:flex; align-items:center; gap:24px; }
+    .footer-link {
+      display:flex; align-items:center; gap:6px;
+      font-size:14px; color:var(--text-sec);
+      transition: color .2s ease;
+    }
+    .footer-link:hover { color: var(--gold-light); }
+    .ig-svg { width:18px; height:18px; fill:currentColor; }
+
+    /* =============================================
+       CONFETTI CANVAS
+    ============================================= */
+    #confetti-canvas {
+      position:fixed; inset:0; pointer-events:none;
+      z-index:9999; display:none;
+    }
+
+    /* =============================================
+       RESPONSIVE
+    ============================================= */
+    @media (max-width: 900px) {
+      .hero-layout { grid-template-columns:1fr; text-align:center; gap:52px; }
+      .hero-left { align-items:center; }
+      .hero-sub  { max-width:100%; }
+      .pain-grid, .feat-grid, .stats-grid { grid-template-columns:1fr; }
+      .phone-wrapper { animation: phone-float-m 4s ease-in-out infinite; }
+      @keyframes phone-float-m {
+        0%,100% { transform:translateY(0); }
+        50%      { transform:translateY(-14px); }
+      }
+      .cta-box { padding:52px 24px; }
+      .footer-inner { flex-direction:column; text-align:center; }
+    }
+    @media (max-width: 600px) {
+      .section { padding: 72px 0; }
+      .hero-form { flex-direction:column; }
+      .email-input { min-width:100%; }
+      .phone-frame { width:230px; }
+      .phone-screen { height: 430px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Confetti -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ================================================
+     NAV
+================================================ -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <div class="logo-mark">🏕</div>
+        <span class="logo-name">NomadFit</span>
+      </a>
+      <button class="btn-nav" onclick="scrollToHero()">Присоединиться</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ================================================
+     HERO
+================================================ -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="container">
+    <div class="hero-layout">
+
+      <!-- LEFT -->
+      <div class="hero-left reveal">
+        <div class="hero-badge">
+          <div class="badge-dot"></div>
+          🚀 Скоро запуск · Казахстан, Узбекистан, Кыргызстан
+        </div>
+
+        <h1 class="hero-h1">
+          Первый AI диетолог который знает<br>
+          <span class="gold-text">бешбармак</span>
+        </h1>
+
+        <p class="hero-sub">
+          Считай калории в манты, плове, лагмане и 500+ казахских блюдах.
+          Персональный план питания на основе твоей культуры.
+        </p>
+
+        <form class="hero-form" id="hero-form" onsubmit="handleHeroSubmit(event)">
+          <input class="email-input" type="email" id="hero-email"
+            placeholder="твой@email.com" required autocomplete="email">
+          <button class="btn-cta" id="hero-btn" type="submit">
+            Вступить в список ожидания
+          </button>
+        </form>
+
+        <div class="form-msg" id="hero-msg"></div>
+
+        <div class="social-proof">
+          <div class="proof-avatars">
+            <div class="proof-avatar" style="background:linear-gradient(135deg,#8B4513,#C8960C)">🧑</div>
+            <div class="proof-avatar" style="background:linear-gradient(135deg,#6B3A2A,#8B4513)">👩</div>
+            <div class="proof-avatar" style="background:linear-gradient(135deg,#C8960C,#D4A843)">🧔</div>
+          </div>
+          <span>Уже <strong id="waitlist-count" style="color:var(--gold-light)">…</strong> человек ждут запуска</span>
+        </div>
+      </div>
+
+      <!-- RIGHT — phone mockup -->
+      <div class="hero-right reveal" style="transition-delay:.2s">
+        <div class="phone-wrapper">
+          <div class="phone-glow"></div>
+          <div class="phone-frame">
+            <div class="phone-notch">
+              <div class="notch-cam"></div>
+              <div class="notch-spk"></div>
+            </div>
+            <div class="phone-screen">
+              <div class="app-sb">
+                <span>9:41</span><span>📶 🔋</span>
+              </div>
+              <div class="app-hdr">
+                <div class="app-greet">Доброе утро, Айдар 👋</div>
+                <div class="app-title">Мой дневник питания</div>
+              </div>
+
+              <div class="app-ring">
+                <!-- SVG progress ring -->
+                <svg width="58" height="58" viewBox="0 0 58 58" style="flex-shrink:0">
+                  <defs>
+                    <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#C8960C"/>
+                      <stop offset="100%" stop-color="#D4A843"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="29" cy="29" r="23" fill="none"
+                    stroke="rgba(200,150,12,0.14)" stroke-width="5"/>
+                  <circle cx="29" cy="29" r="23" fill="none"
+                    stroke="url(#rg)" stroke-width="5"
+                    stroke-dasharray="144" stroke-dashoffset="52"
+                    stroke-linecap="round" transform="rotate(-90 29 29)"/>
+                </svg>
+                <div class="ring-detail">
+                  <h4>1 420</h4>
+                  <p>из 2 100 ккал</p>
+                  <small style="margin-top:4px;display:block">Осталось: 680 ккал</small>
+                </div>
+              </div>
+
+              <div class="app-meals">
+                <div class="meals-lbl">Сегодня съел</div>
+
+                <div class="meal-row">
+                  <div class="meal-ico">🥟</div>
+                  <div class="meal-text">
+                    <b>Манты (5 шт.)</b>
+                    <span>420 ккал · Б: 22г · У: 38г</span>
+                  </div>
+                  <div class="ai-badge">AI</div>
+                </div>
+
+                <div class="meal-row">
+                  <div class="meal-ico">🍜</div>
+                  <div class="meal-text">
+                    <b>Лагман (порция)</b>
+                    <span>380 ккал · Б: 18г · Ж: 12г</span>
+                  </div>
+                  <div class="ai-badge">AI</div>
+                </div>
+
+                <div class="meal-row">
+                  <div class="meal-ico">🫓</div>
+                  <div class="meal-text">
+                    <b>Баурсак (3 шт.)</b>
+                    <span>210 ккал · Ж: 8г · У: 28г</span>
+                  </div>
+                  <div class="ai-badge">AI</div>
+                </div>
+              </div>
+
+              <div class="app-scan">📸 Сфотографировать блюдо</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================================================
+     PROBLEM
+================================================ -->
+<section id="problem" class="section">
+  <div class="container">
+    <h2 class="section-title reveal">
+      Ты когда-нибудь пытался найти<br>
+      <span class="gold-text">калории бешбармака</span> в MyFitnessPal?
+    </h2>
+    <p class="section-sub reveal">Западные приложения создавались не для нас. Они не знают нашу еду — и никогда не узнают.</p>
+
+    <div class="pain-grid">
+      <div class="pain-card reveal">
+        <span class="pain-icon">🌍</span>
+        <h3>Западные приложения не знают казахскую кухню</h3>
+        <p>MyFitnessPal, Lose It и другие содержат тысячи пицц и бургеров, но не знают бешбармак, куурдак или шорпо.</p>
+      </div>
+      <div class="pain-card reveal" style="transition-delay:.1s">
+        <span class="pain-icon">⚖️</span>
+        <h3>Неправильные порции — манты per 100г вместо per штука</h3>
+        <p>Считать калории в граммах манты невозможно. Наша еда — это порции, штуки, пиалы. Не граммы.</p>
+      </div>
+      <div class="pain-card reveal" style="transition-delay:.2s">
+        <span class="pain-icon">🔤</span>
+        <h3>Нет казахского языка — всё на английском</h3>
+        <p>Здоровый образ жизни должен быть доступен каждому. Языковой барьер не должен мешать твоим целям.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================
+     SOLUTION
+================================================ -->
+<section id="solution" class="section">
+  <div class="container">
+    <h2 class="section-title reveal">
+      NomadFit создан <span class="gold-text">для тебя</span>
+    </h2>
+    <p class="section-sub reveal">Первое приложение, которое понимает казахскую кухню так же хорошо, как твоя апа.</p>
+
+    <div class="feat-grid">
+      <div class="feat-card reveal">
+        <span class="feat-emoji">📸</span>
+        <h3>Сфотографируй еду</h3>
+        <p>AI мгновенно определит блюдо и рассчитает калории. Просто направь камеру на тарелку — всё остальное сделает NomadFit.</p>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.1s">
+        <span class="feat-emoji">🍽</span>
+        <h3>500+ казахских блюд</h3>
+        <p>Бешбармак, манты, плов, самса, баурсак, куурдак, шорпо и многое другое. Полная база центральноазиатской кухни.</p>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.2s">
+        <span class="feat-emoji">🤖</span>
+        <h3>Персональный AI план</h3>
+        <p>Худей не отказываясь от любимой еды. AI строит план питания учитывая твою культуру, вкусы и цели.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================
+     SOCIAL PROOF
+================================================ -->
+<section id="social-proof" class="section">
+  <div class="container">
+    <h2 class="section-title reveal">
+      Миллионы казахстанцев ищут<br>
+      <span class="gold-text">как считать калории в родной еде</span>
+    </h2>
+    <p class="section-sub reveal">Рынок есть. Решения нет. До сегодняшнего дня.</p>
+
+    <div class="stats-grid">
+      <div class="stat-card reveal">
+        <div class="stat-num">3.1М</div>
+        <div class="stat-lbl">просмотров YouTube видео о похудении с казахской едой</div>
+      </div>
+      <div class="stat-card reveal" style="transition-delay:.1s">
+        <div class="stat-num">60М+</div>
+        <div class="stat-lbl">людей в Центральной Азии без нормального приложения для трекинга</div>
+      </div>
+      <div class="stat-card reveal" style="transition-delay:.2s">
+        <div class="stat-num">0</div>
+        <div class="stat-lbl">достойных конкурентов против глобальных гигантов рынка</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================
+     WAITLIST CTA
+================================================ -->
+<section id="waitlist-cta" class="section">
+  <div class="container">
+    <div class="cta-box reveal">
+      <div class="cta-glow"></div>
+      <h2>Будь первым кто<br><span class="gold-text">попробует NomadFit</span></h2>
+      <p class="cta-sub">Присоединись к списку ожидания и получи бесплатный доступ при запуске.</p>
+
+      <form class="cta-form" id="cta-form" onsubmit="handleCtaSubmit(event)">
+        <input class="email-input" type="email" id="cta-email"
+          placeholder="твой@email.com" required autocomplete="email"
+          style="min-width:270px">
+        <button class="btn-cta" id="cta-btn" type="submit">
+          Вступить в список
+        </button>
+      </form>
+
+      <div class="form-msg" id="cta-msg"></div>
+
+      <p class="cta-hint" style="margin-top:18px">
+        <strong>🎁 Бесплатный доступ</strong> первым 500 подписчикам
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================
+     FOOTER
+================================================ -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <div class="logo-mark" style="width:30px;height:30px;background:linear-gradient(135deg,var(--primary),var(--gold));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px">🏕</div>
+        <span>NomadFit</span>
+      </div>
+
+      <div class="footer-copy">© 2025 NomadFit &nbsp;·&nbsp; Сделано в Казахстане 🇰🇿</div>
+
+      <div class="footer-links">
+        <a href="https://instagram.com/nomadfit.app" target="_blank" rel="noopener" class="footer-link">
+          <svg class="ig-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+          </svg>
+          Instagram
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ================================================
+     JAVASCRIPT
+================================================ -->
+<script>
+/* ——————————————————————————————————————
+   SUPABASE CONFIG
+   Replace both values with your project credentials.
+   Table required: waitlist (id uuid pk, email text unique, created_at timestamptz default now())
+—————————————————————————————————————— */
+const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+const SUPABASE_READY = SUPABASE_URL.startsWith('http');
+const sb = SUPABASE_READY ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/* ——————————————————————————————————————
+   NAV SCROLL
+—————————————————————————————————————— */
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+function scrollToHero() {
+  document.getElementById('hero-email').focus();
+  document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ——————————————————————————————————————
+   WAITLIST COUNT
+—————————————————————————————————————— */
+async function loadCount() {
+  if (!SUPABASE_READY) { document.getElementById('waitlist-count').textContent = '0'; return; }
+  try {
+    const { count } = await sb.from('waitlist').select('*', { count: 'exact', head: true });
+    document.getElementById('waitlist-count').textContent = (count ?? 0).toLocaleString('ru-RU');
+  } catch {
+    document.getElementById('waitlist-count').textContent = '0';
+  }
+}
+loadCount();
+
+/* ——————————————————————————————————————
+   SUBMIT
+—————————————————————————————————————— */
+async function submitEmail(email) {
+  if (!SUPABASE_READY) return { ok: true, msg: 'Ты в списке! Мы напишем когда запустимся 🎉' };
+  const { error } = await sb.from('waitlist').insert([{ email: email.trim().toLowerCase() }]);
+  if (error) {
+    if (error.code === '23505') return { ok: false, msg: 'Этот email уже в списке ожидания 👀' };
+    return { ok: false, msg: 'Что-то пошло не так. Попробуй ещё раз.' };
+  }
+  await loadCount();
+  return { ok: true, msg: 'Ты в списке! Мы напишем когда запустимся 🎉' };
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'form-msg ' + type;
+}
+
+async function handleHeroSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('hero-btn');
+  btn.disabled = true; btn.textContent = 'Отправляем…';
+  const res = await submitEmail(document.getElementById('hero-email').value);
+  showMsg('hero-msg', res.msg, res.ok ? 'success' : 'error');
+  if (res.ok) { document.getElementById('hero-email').value = ''; fireConfetti(); }
+  btn.disabled = false; btn.textContent = 'Вступить в список ожидания';
+}
+
+async function handleCtaSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('cta-btn');
+  btn.disabled = true; btn.textContent = 'Отправляем…';
+  const res = await submitEmail(document.getElementById('cta-email').value);
+  showMsg('cta-msg', res.msg, res.ok ? 'success' : 'error');
+  if (res.ok) { document.getElementById('cta-email').value = ''; fireConfetti(); }
+  btn.disabled = false; btn.textContent = 'Вступить в список';
+}
+
+/* ——————————————————————————————————————
+   FLOATING FOOD PARTICLES
+—————————————————————————————————————— */
+(function () {
+  const canvas = document.getElementById('particle-canvas');
+  const ctx    = canvas.getContext('2d');
+  const EMOJIS = ['🍖','🥟','🍜','🫓','🥩','🍚','🫖','🌿','🥘'];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  class P {
+    constructor(randomY) {
+      this.reset(randomY);
+    }
+    reset(randomY) {
+      this.x     = Math.random() * canvas.width;
+      this.y     = randomY ? Math.random() * canvas.height : canvas.height + 60;
+      this.emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+      this.size  = 14 + Math.random() * 22;
+      this.vy    = 0.28 + Math.random() * 0.52;
+      this.vx    = (Math.random() - .5) * 0.4;
+      this.rot   = Math.random() * Math.PI * 2;
+      this.dr    = (Math.random() - .5) * 0.018;
+      this.alpha = 0.1 + Math.random() * 0.17;
+    }
+    tick() {
+      this.y   -= this.vy;
+      this.x   += this.vx;
+      this.rot += this.dr;
+      if (this.y < -60) this.reset(false);
+    }
+    draw() {
+      ctx.save();
+      ctx.globalAlpha = this.alpha;
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rot);
+      ctx.font = `${this.size}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.emoji, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  const parts = Array.from({ length: 22 }, (_, i) => new P(i < 16));
+
+  (function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    parts.forEach(p => { p.tick(); p.draw(); });
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ——————————————————————————————————————
+   SCROLL REVEAL
+—————————————————————————————————————— */
+const io = new IntersectionObserver(
+  entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
+  { threshold: 0.08, rootMargin: '0px 0px -20px 0px' }
+);
+// Observe after layout; also force-reveal anything already in viewport after 300ms
+requestAnimationFrame(() => {
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+});
+setTimeout(() => {
+  document.querySelectorAll('.reveal:not(.visible)').forEach(el => {
+    if (el.getBoundingClientRect().top < window.innerHeight + 100) el.classList.add('visible');
+  });
+}, 300);
+
+/* ——————————————————————————————————————
+   CONFETTI
+—————————————————————————————————————— */
+(function () {
+  const cv  = document.getElementById('confetti-canvas');
+  const ctx = cv.getContext('2d');
+  const COLORS = ['#C8960C','#D4A843','#8B4513','#F2E8D9','#6B3A2A','#ffffff','#FFD700','#ff6b35'];
+  let pieces = [], running = false;
+
+  class Piece {
+    constructor() {
+      this.x  = Math.random() * cv.width;
+      this.y  = -12;
+      this.w  = 5 + Math.random() * 9;
+      this.h  = 9 + Math.random() * 9;
+      this.c  = COLORS[Math.floor(Math.random() * COLORS.length)];
+      this.vy = 2.8 + Math.random() * 4;
+      this.vx = (Math.random() - .5) * 3;
+      this.rot = Math.random() * Math.PI * 2;
+      this.dr  = (Math.random() - .5) * 0.14;
+      this.alpha = 1;
+      this.circle = Math.random() > .55;
+    }
+    tick()  { this.y += this.vy; this.x += this.vx; this.vy += .045; this.rot += this.dr; if (this.y > cv.height + 20) this.alpha = 0; }
+    draw()  {
+      ctx.save(); ctx.globalAlpha = this.alpha; ctx.fillStyle = this.c;
+      ctx.translate(this.x, this.y); ctx.rotate(this.rot);
+      if (this.circle) { ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill(); }
+      else { ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h); }
+      ctx.restore();
+    }
+  }
+
+  window.fireConfetti = function () {
+    cv.style.display = 'block';
+    cv.width  = window.innerWidth;
+    cv.height = window.innerHeight;
+    pieces = [];
+    for (let i = 0; i < 160; i++) setTimeout(() => pieces.push(new Piece()), i * 9);
+    if (!running) { running = true; loop(); }
+  };
+
+  function loop() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    pieces = pieces.filter(p => p.alpha > 0);
+    pieces.forEach(p => { p.tick(); p.draw(); });
+    if (pieces.length) requestAnimationFrame(loop);
+    else { running = false; cv.style.display = 'none'; }
+  }
+})();
+</script>
+
+</body>
+</html>
